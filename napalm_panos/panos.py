@@ -527,3 +527,58 @@ class PANOSDriver(NetworkDriver):
             interface_dict[name] = interface
 
         return interface_dict
+		
+		
+	def get_arp_table(self):
+	
+		"""
+			Get arp table information.
+			Return a list of dictionaries having the following set of keys:
+				* interface (string)
+				* mac (string)
+				* ip (string)
+				* age (float)
+			For example::
+				[
+					{
+						'interface' : 'MgmtEth0/RSP0/CPU0/0',
+						'mac'       : '5c:5e:ab:da:3c:f0',
+						'ip'        : '172.17.17.1',
+						'age'       : 1454496274.84
+					},
+					{
+						'interface': 'MgmtEth0/RSP0/CPU0/0',
+						'mac'       : '66:0e:94:96:e0:ff',
+						'ip'        : '172.17.17.2',
+						'age'       : 1435641582.49
+					}
+				]
+		"""
+
+		arp_table = {}
+		cmd = "<show><arp><entry name='all'></entry></arp></show>"
+		
+		try:
+			self.device.op(cmd=cmd, cmd_xml=False)
+			arp_table_xml = xmltodict.parse(API.xml_root())
+			timeout = int(arp_table_xml['response']['result']['timeout'])
+			arp_table_json = json.dumps(arp_table_xml['response']['result']['entries']['entry'])
+			arp_table = json.loads(arp_table_json)
+		except ( KeyError, AttributeError ):
+			arp_table = []
+		
+		arp_list = []
+		
+		for arp in arp_table:
+			
+			d = {
+				'interface' : arp['interface'],
+				'mac' : arp['mac'],
+				'ip' : arp['ip'],
+				'age' : timeout - int(arp['ttl'])
+			}
+	
+			arp_list.append(d)
+
+		return arp_list
+	
